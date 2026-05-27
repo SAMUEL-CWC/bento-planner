@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>便當週菜單規劃</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css" />
+  <style>
+    :root {
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --font-mono: "SF Mono", "Fira Code", monospace;
+      --color-bg: #ffffff;
+      --color-bg-2: #f7f7f5;
+      --color-bg-3: #efefed;
+      --color-text: #1a1a1a;
+      --color-text-2: #666660;
+      --color-text-3: #999994;
+      --color-border: #e8e8e4;
+      --color-border-2: #d4d4d0;
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --color-bg: #1a1a1a;
+        --color-bg-2: #242424;
+        --color-bg-3: #2e2e2e;
+        --color-text: #f0f0ee;
+        --color-text-2: #a0a09a;
+        --color-text-3: #666660;
+        --color-border: #333330;
+        --color-border-2: #444440;
+      }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font-sans); background: var(--color-bg); color: var(--color-text); min-height: 100vh; }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1.25rem; }
+
+    .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 0.5px solid var(--color-border); }
+    .app-title { font-size: 20px; font-weight: 600; }
+    .app-sub { font-size: 12px; color: var(--color-text-3); margin-top: 3px; }
+    .topbar-right { display: flex; align-items: center; gap: 10px; }
+    .sync-badge { font-size: 11px; padding: 4px 10px; border-radius: 20px; display: flex; align-items: center; gap: 5px; }
+    .sync-ok { background: #EAF3DE; color: #3B6D11; }
+    .sync-saving { background: #FAEEDA; color: #854F0B; }
+    .user-pill { display: flex; align-items: center; gap: 7px; padding: 5px 12px; border-radius: 20px; background: var(--color-bg-2); border: 0.5px solid var(--color-border); cursor: pointer; font-size: 13px; }
+    .user-pill:hover { border-color: var(--color-border-2); }
+    .avatar { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0; }
+
+    .nav { display: flex; gap: 2px; margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .nav-btn { padding: 7px 14px; font-size: 13px; font-weight: 500; border: none; background: none; color: var(--color-text-2); cursor: pointer; border-radius: var(--radius-md); transition: all .15s; }
+    .nav-btn.active { background: var(--color-bg-2); color: var(--color-text); }
+    .nav-btn:hover:not(.active) { color: var(--color-text); background: var(--color-bg-2); }
+
+    .tab { display: none; } .tab.active { display: block; }
+
+    .week-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; }
+    .week-label { font-size: 14px; font-weight: 500; }
+    .week-outer { overflow-x: auto; padding-bottom: 6px; }
+    .week-grid { display: grid; grid-template-columns: repeat(7, minmax(130px, 1fr)); gap: 8px; min-width: 910px; }
+    .day-col { background: var(--color-bg); border: 0.5px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden; }
+    .day-col.weekend { border-color: #CED8F5; }
+    .day-header { padding: 10px 12px; border-bottom: 0.5px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; }
+    .day-col.weekend .day-header { background: #F5F7FE; }
+    .day-name { font-size: 11px; font-weight: 600; color: var(--color-text-2); letter-spacing: .05em; text-transform: uppercase; }
+    .day-col.weekend .day-name { color: #4A5FC1; }
+    .day-date { font-size: 11px; color: var(--color-text-3); }
+    .dishes-area { padding: 8px; }
+    .dish-card { background: var(--color-bg-2); border-radius: var(--radius-md); padding: 9px 10px; margin-bottom: 6px; cursor: pointer; position: relative; transition: background .1s; }
+    .dish-card:hover { background: var(--color-bg-3); }
+    .dish-card-name { font-size: 13px; font-weight: 500; line-height: 1.3; padding-right: 20px; }
+    .dish-card-tags { display: flex; gap: 4px; margin-top: 5px; flex-wrap: wrap; }
+    .dish-card-by { font-size: 10px; color: var(--color-text-3); margin-top: 5px; display: flex; align-items: center; gap: 3px; }
+    .tag { font-size: 10px; padding: 2px 6px; border-radius: 20px; font-weight: 500; }
+    .t-meat { background: #FAECE7; color: #993C1D; } .t-veg { background: #EAF3DE; color: #3B6D11; }
+    .t-stir { background: #E6F1FB; color: #185FA5; } .t-braise { background: #FAEEDA; color: #854F0B; }
+    .t-steam { background: #E1F5EE; color: #0F6E56; } .t-fry { background: #EEEDFE; color: #3C3489; }
+    .t-raw { background: #F1EFE8; color: #5F5E5A; }
+    .del-btn { position: absolute; top: 7px; right: 7px; background: none; border: none; cursor: pointer; color: var(--color-text-3); font-size: 14px; opacity: 0; transition: opacity .15s; line-height: 1; }
+    .dish-card:hover .del-btn { opacity: 1; }
+    .add-dish-btn { width: 100%; padding: 7px 8px; border: 0.5px dashed var(--color-border-2); border-radius: var(--radius-md); background: none; color: var(--color-text-3); font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; transition: all .15s; }
+    .add-dish-btn:hover { border-color: var(--color-text-2); color: var(--color-text-2); background: var(--color-bg-2); }
+
+    .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); align-items: flex-start; justify-content: center; z-index: 200; padding: 2rem 1rem; overflow-y: auto; }
+    .modal-bg.open { display: flex; }
+    .modal { background: var(--color-bg); border-radius: var(--radius-lg); border: 0.5px solid var(--color-border); width: 520px; max-width: 100%; padding: 1.5rem; margin: auto; }
+    .modal-hd { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; }
+    .modal-title { font-size: 16px; font-weight: 500; }
+    .icon-btn { background: none; border: none; cursor: pointer; color: var(--color-text-2); font-size: 18px; padding: 2px; line-height: 1; }
+    .icon-btn:hover { color: var(--color-text); }
+    .fg { margin-bottom: 1rem; }
+    .flabel { font-size: 12px; font-weight: 500; color: var(--color-text-2); margin-bottom: 6px; display: block; }
+    .finput, .ftextarea { width: 100%; border: 0.5px solid var(--color-border-2); border-radius: var(--radius-md); padding: 8px 10px; font-size: 14px; font-family: var(--font-sans); background: var(--color-bg); color: var(--color-text); outline: none; }
+    .finput:focus, .ftextarea:focus { border-color: var(--color-text-2); }
+    .ftextarea { min-height: 72px; resize: vertical; line-height: 1.5; }
+    .row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+    .row .finput { flex: 1; }
+    .row .finput.sm { width: 90px; flex: none; }
+    .tag-picker { display: flex; gap: 6px; flex-wrap: wrap; }
+    .topt { font-size: 12px; padding: 4px 10px; border-radius: 20px; cursor: pointer; border: 0.5px solid var(--color-border-2); color: var(--color-text-2); background: none; transition: all .1s; }
+    .topt.sel-meat { background: #FAECE7; color: #993C1D; border-color: #F0997B; }
+    .topt.sel-veg { background: #EAF3DE; color: #3B6D11; border-color: #97C459; }
+    .topt.sel-stir { background: #E6F1FB; color: #185FA5; border-color: #85B7EB; }
+    .topt.sel-braise { background: #FAEEDA; color: #854F0B; border-color: #EF9F27; }
+    .topt.sel-steam { background: #E1F5EE; color: #0F6E56; border-color: #5DCAA5; }
+    .topt.sel-fry { background: #EEEDFE; color: #3C3489; border-color: #AFA9EC; }
+    .topt.sel-raw { background: #F1EFE8; color: #5F5E5A; border-color: #B4B2A9; }
+    .step-num { width: 22px; height: 22px; border-radius: 50%; background: var(--color-bg-2); font-size: 11px; font-weight: 500; color: var(--color-text-2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 8px; }
+    .modal-ft { display: flex; justify-content: flex-end; gap: 8px; margin-top: 1.25rem; padding-top: 1rem; border-top: 0.5px solid var(--color-border); }
+    .btn-primary { padding: 8px 18px; font-size: 14px; font-weight: 500; background: var(--color-text); color: var(--color-bg); border: none; border-radius: var(--radius-md); cursor: pointer; }
+    .btn-primary:hover { opacity: .85; }
+    .btn-cancel { padding: 8px 18px; font-size: 14px; border: 0.5px solid var(--color-border-2); background: none; color: var(--color-text-2); border-radius: var(--radius-md); cursor: pointer; }
+    .btn-cancel:hover { background: var(--color-bg-2); }
+    .btn-sm { font-size: 12px; padding: 5px 10px; border: 0.5px solid var(--color-border-2); border-radius: var(--radius-md); background: none; color: var(--color-text-2); cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+    .btn-sm:hover { background: var(--color-bg-2); color: var(--color-text); }
+
+    .detail-section { margin-bottom: 1.25rem; }
+    .detail-section-label { font-size: 11px; font-weight: 500; color: var(--color-text-3); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip { font-size: 13px; padding: 4px 10px; background: var(--color-bg-2); border-radius: 20px; }
+    .step-item { display: flex; gap: 12px; margin-bottom: 10px; }
+    .step-badge { width: 22px; height: 22px; border-radius: 50%; background: var(--color-bg-2); font-size: 11px; font-weight: 500; display: flex; align-items: center; justify-content: center; color: var(--color-text-2); flex-shrink: 0; margin-top: 2px; }
+    .step-text { font-size: 14px; line-height: 1.6; }
+    .note-box { background: var(--color-bg-2); border-radius: var(--radius-md); padding: 10px 14px; font-size: 13px; color: var(--color-text-2); line-height: 1.5; }
+    .history-list { border-top: 0.5px solid var(--color-border); padding-top: 12px; margin-top: 4px; }
+    .history-item { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+    .history-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-border-2); flex-shrink: 0; }
+    .history-time { color: var(--color-text-3); font-size: 11px; white-space: nowrap; margin-left: auto; }
+
+    .section-hd { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .section-title { font-size: 16px; font-weight: 500; }
+    .notice { background: var(--color-bg-2); border-radius: var(--radius-md); padding: 10px 14px; font-size: 13px; color: var(--color-text-2); margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; }
+    .grp { margin-bottom: 1.5rem; }
+    .grp-title { font-size: 11px; font-weight: 600; color: var(--color-text-2); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+    .grp-items { background: var(--color-bg); border: 0.5px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden; }
+    .gitem { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 0.5px solid var(--color-border); }
+    .gitem:last-child { border-bottom: none; }
+    .gitem.checked .gname { text-decoration: line-through; color: var(--color-text-3); }
+    .gchk { width: 16px; height: 16px; border-radius: 4px; cursor: pointer; flex-shrink: 0; accent-color: var(--color-text); }
+    .gname { flex: 1; font-size: 14px; }
+    .gqty { font-size: 13px; color: var(--color-text-2); min-width: 55px; text-align: right; }
+    .store-pill { position: relative; }
+    .store-btn { font-size: 11px; padding: 3px 8px; border-radius: 20px; background: var(--color-bg-2); color: var(--color-text-2); border: 0.5px solid var(--color-border); cursor: pointer; white-space: nowrap; }
+    .store-btn:hover { border-color: var(--color-border-2); }
+    .store-drop { position: absolute; right: 0; top: calc(100% + 4px); background: var(--color-bg); border: 0.5px solid var(--color-border-2); border-radius: var(--radius-lg); padding: 6px; z-index: 50; min-width: 175px; display: none; box-shadow: 0 4px 16px rgba(0,0,0,.1); }
+    .store-drop.open { display: block; }
+    .sopt { display: block; width: 100%; text-align: left; padding: 6px 10px; font-size: 12px; color: var(--color-text-2); background: none; border: none; cursor: pointer; border-radius: var(--radius-sm); }
+    .sopt:hover { background: var(--color-bg-2); color: var(--color-text); }
+    .sopt.sel { color: var(--color-text); font-weight: 500; }
+
+    .wish-item { background: var(--color-bg); border: 0.5px solid var(--color-border); border-radius: var(--radius-lg); padding: 14px 16px; margin-bottom: 10px; }
+    .wish-hd { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+    .wish-name { font-size: 15px; font-weight: 500; }
+    .wish-meta { font-size: 12px; color: var(--color-text-3); margin-top: 3px; display: flex; align-items: center; gap: 4px; }
+    .wish-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .vote-btn { display: flex; align-items: center; gap: 5px; padding: 4px 10px; border: 0.5px solid var(--color-border-2); border-radius: 20px; background: none; cursor: pointer; font-size: 13px; color: var(--color-text-2); transition: all .15s; }
+    .vote-btn:hover { background: var(--color-bg-2); }
+    .vote-btn.voted { background: #FAECE7; color: #993C1D; border-color: #F0997B; }
+    .vote-avatars { display: flex; align-items: center; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+    .use-btn { font-size: 12px; padding: 4px 10px; border: 0.5px solid #639922; border-radius: var(--radius-md); background: #EAF3DE; color: #3B6D11; cursor: pointer; }
+    .use-btn:hover { background: #C0DD97; }
+    .wish-ings { margin-top: 10px; padding-top: 10px; border-top: 0.5px solid var(--color-border); }
+    .wish-ing-label { font-size: 11px; color: var(--color-text-3); margin-bottom: 5px; }
+    .wish-ing-pills { display: flex; gap: 5px; flex-wrap: wrap; }
+    .wip { font-size: 12px; padding: 2px 8px; background: var(--color-bg-2); border-radius: 20px; color: var(--color-text-2); }
+
+    .log-item { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-bottom: 0.5px solid var(--color-border); }
+    .log-item:last-child { border-bottom: none; }
+    .log-content { flex: 1; }
+    .log-main { font-size: 13px; line-height: 1.4; }
+    .log-time { font-size: 11px; color: var(--color-text-3); margin-top: 2px; }
+    .log-action { display: inline-block; font-size: 10px; font-weight: 500; padding: 1px 6px; border-radius: 20px; margin-right: 5px; }
+    .la-add { background: #EAF3DE; color: #3B6D11; } .la-edit { background: #E6F1FB; color: #185FA5; }
+    .la-del { background: #FCEBEB; color: #A32D2D; } .la-vote { background: #FAECE7; color: #993C1D; }
+    .la-wish { background: #EEEDFE; color: #3C3489; }
+
+    .settings-card { background: var(--color-bg); border: 0.5px solid var(--color-border); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1rem; }
+    .settings-title { font-size: 14px; font-weight: 500; margin-bottom: 4px; }
+    .settings-desc { font-size: 13px; color: var(--color-text-2); line-height: 1.5; margin-bottom: 1rem; }
+    .conn-status { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: var(--radius-md); font-size: 13px; margin-bottom: 1rem; }
+    .conn-ok { background: #EAF3DE; color: #3B6D11; }
+    .conn-warn { background: #FAEEDA; color: #854F0B; }
+    .conn-err { background: #FCEBEB; color: #A32D2D; }
+    .input-row { display: flex; gap: 8px; }
+    .input-row .finput { flex: 1; }
+
+    .name-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; align-items: center; justify-content: center; z-index: 300; }
+    .name-overlay.open { display: flex; }
+    .name-card { background: var(--color-bg); border-radius: var(--radius-lg); padding: 2rem; width: 360px; max-width: 90vw; text-align: center; border: 0.5px solid var(--color-border); }
+    .name-card-title { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
+    .name-card-sub { font-size: 13px; color: var(--color-text-2); margin-bottom: 1.5rem; line-height: 1.6; }
+    .color-picker { display: flex; gap: 8px; justify-content: center; margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .color-opt { width: 28px; height: 28px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform .15s; }
+    .color-opt:hover { transform: scale(1.15); }
+    .color-opt.sel { border-color: #333; transform: scale(1.15); }
+
+    code { font-family: var(--font-mono); font-size: 12px; background: var(--color-bg-2); padding: 2px 6px; border-radius: 4px; }
+    .code-block { font-family: var(--font-mono); font-size: 12px; background: var(--color-bg-2); border-radius: var(--radius-md); padding: 12px 14px; margin: 8px 0; overflow-x: auto; border: 0.5px solid var(--color-border); line-height: 1.7; white-space: pre; }
+    a { color: #185FA5; }
+  </style>
+</head>
+<body>
+
+<div id="name-overlay" class="name-overlay">
+  <div class="name-card">
+    <div class="name-card-title">你是誰？</div>
+    <div class="name-card-sub">設定暱稱讓大家知道是你新增或編輯了菜色。之後可在右上角更改。</div>
+    <div class="fg"><input class="finput" id="setup-name" placeholder="輸入暱稱，例：小明" style="text-align:center;font-size:15px" /></div>
+    <div class="color-picker" id="color-picker"></div>
+    <button class="btn-primary" style="width:100%" onclick="confirmIdentity()">確認，開始規劃</button>
+  </div>
+</div>
+
+<div class="container">
+  <div class="topbar">
+    <div>
+      <div class="app-title">便當週菜單規劃</div>
+      <div class="app-sub" id="week-range-display">載入中...</div>
+    </div>
+    <div class="topbar-right">
+      <span class="sync-badge sync-ok" id="sync-badge"><i class="ti ti-cloud-check"></i><span id="sync-text">已儲存</span></span>
+      <button class="user-pill" onclick="openNameEdit()" id="user-pill">
+        <div class="avatar" id="topbar-avatar" style="background:#E6F1FB;color:#185FA5">?</div>
+        <span id="topbar-name">設定暱稱</span>
+        <i class="ti ti-pencil" style="font-size:11px;opacity:.5"></i>
+      </button>
+    </div>
+  </div>
+
+  <div class="nav">
+    <button class="nav-btn active" onclick="switchTab('plan',this)"><i class="ti ti-calendar-week"></i> 週菜單</button>
+    <button class="nav-btn" onclick="switchTab('grocery',this)"><i class="ti ti-shopping-cart"></i> 採購清單</button>
+    <button class="nav-btn" onclick="switchTab('wish',this)"><i class="ti ti-heart"></i> 許願清單</button>
+    <button class="nav-btn" onclick="switchTab('log',this)"><i class="ti ti-history"></i> 動態紀錄</button>
+    <button class="nav-btn" onclick="switchTab('settings',this)"><i class="ti ti-settings"></i> 協作設定</button>
+  </div>
+
+  <!-- 週菜單 -->
+  <div id="tab-plan" class="tab active">
+    <div class="week-nav">
+      <button class="btn-sm" onclick="shiftWeek(-1)"><i class="ti ti-chevron-left"></i> 上週</button>
+      <span class="week-label" id="week-label">這週</span>
+      <button class="btn-sm" onclick="shiftWeek(1)">下週 <i class="ti ti-chevron-right"></i></button>
+    </div>
+    <div class="week-outer"><div class="week-grid" id="week-grid"></div></div>
+  </div>
+
+  <!-- 採購清單 -->
+  <div id="tab-grocery" class="tab">
+    <div class="section-hd">
+      <div class="section-title">食材採購清單</div>
+      <div style="display:flex;gap:6px">
+        <button class="btn-sm" onclick="generateGrocery()"><i class="ti ti-refresh"></i> 重新彙整</button>
+        <button class="btn-sm" onclick="addCustomItem()"><i class="ti ti-plus"></i> 手動新增</button>
+      </div>
+    </div>
+    <div class="notice"><i class="ti ti-info-circle"></i> 從本週菜單自動彙整食材，點選超市標籤可切換採買地點。</div>
+    <div id="grocery-body"></div>
+  </div>
+
+  <!-- 許願清單 -->
+  <div id="tab-wish" class="tab">
+    <div class="section-hd">
+      <div class="section-title">許願清單</div>
+      <button class="btn-primary" onclick="openWishModal()"><i class="ti ti-plus"></i> 新增許願</button>
+    </div>
+    <div class="notice"><i class="ti ti-heart"></i> 填入想吃的菜，高票菜可一鍵排入菜單。每人只能對同一道菜投一票。</div>
+    <div id="wish-body"></div>
+  </div>
+
+  <!-- 動態紀錄 -->
+  <div id="tab-log" class="tab">
+    <div class="section-hd">
+      <div class="section-title">動態紀錄</div>
+      <button class="btn-sm" onclick="renderLog()"><i class="ti ti-refresh"></i> 重新整理</button>
+    </div>
+    <div id="log-body"></div>
+  </div>
+
+  <!-- 協作設定 -->
+  <div id="tab-settings" class="tab">
+    <div class="section-hd"><div class="section-title">協作設定</div></div>
+    <div id="conn-status-bar" class="conn-status conn-warn"><i class="ti ti-cloud-off"></i> 尚未設定 Supabase，目前資料只存在本機</div>
+    <div class="settings-card">
+      <div class="settings-title">Supabase 連線設定</div>
+      <div class="settings-desc">輸入你的 Supabase Project URL 和 Anon Key，你和朋友連上同一組即可即時同步。</div>
+      <div class="fg"><label class="flabel">Supabase Project URL</label><input class="finput" id="sb-url" placeholder="https://xxxxxxxx.supabase.co" /></div>
+      <div class="fg"><label class="flabel">Supabase Anon Key</label><input class="finput" id="sb-key" placeholder="eyJhbGci..." /></div>
+      <div style="display:flex;gap:8px"><button class="btn-primary" onclick="saveSupabaseConfig()">儲存並連線</button><button class="btn-cancel" onclick="clearSupabaseConfig()">清除設定</button></div>
+    </div>
+    <div class="settings-card">
+      <div class="settings-title">分享給朋友</div>
+      <div class="settings-desc">把這個網頁網址分享給朋友，朋友進來後在「協作設定」輸入同一組 URL 和 Anon Key，就能即時同步。</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input class="finput" id="share-url" readonly style="font-size:12px;color:var(--color-text-2)" />
+        <button class="btn-sm" onclick="copyShareUrl()"><i class="ti ti-copy"></i> 複製</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 新增菜色 Modal -->
+<div class="modal-bg" id="add-modal">
+  <div class="modal">
+    <div class="modal-hd"><div class="modal-title" id="add-modal-title">新增菜色</div><button class="icon-btn" onclick="closeModal('add-modal')"><i class="ti ti-x"></i></button></div>
+    <div class="fg"><label class="flabel">菜名</label><input class="finput" id="f-name" placeholder="例：蒜泥白肉" /></div>
+    <div class="fg"><label class="flabel">標籤</label>
+      <div class="tag-picker">
+        <button class="topt" data-tag="meat" onclick="toggleTag(this)">葷</button>
+        <button class="topt" data-tag="veg" onclick="toggleTag(this)">素</button>
+        <button class="topt" data-tag="stir" onclick="toggleTag(this)">快炒</button>
+        <button class="topt" data-tag="braise" onclick="toggleTag(this)">滷煮</button>
+        <button class="topt" data-tag="steam" onclick="toggleTag(this)">蒸</button>
+        <button class="topt" data-tag="fry" onclick="toggleTag(this)">炸</button>
+        <button class="topt" data-tag="raw" onclick="toggleTag(this)">涼拌</button>
+      </div>
+    </div>
+    <div class="fg"><label class="flabel">食材</label><div id="f-ings"></div><button class="btn-sm" onclick="addIngRow('f-ings')" style="margin-top:4px"><i class="ti ti-plus"></i> 加食材</button></div>
+    <div class="fg"><label class="flabel">烹飪步驟</label><div id="f-steps"></div><button class="btn-sm" onclick="addStepRow('f-steps')" style="margin-top:4px"><i class="ti ti-plus"></i> 加步驟</button></div>
+    <div class="fg"><label class="flabel">備注（可提前幾天做？冷藏注意？）</label><textarea class="ftextarea" id="f-note" placeholder="例：滷肉前一天做更入味，冷藏 3 天沒問題"></textarea></div>
+    <div class="modal-ft"><button class="btn-cancel" onclick="closeModal('add-modal')">取消</button><button class="btn-primary" onclick="saveDish()">儲存</button></div>
+  </div>
+</div>
+
+<!-- 菜色詳情 Modal -->
+<div class="modal-bg" id="detail-modal">
+  <div class="modal">
+    <div class="modal-hd"><div class="modal-title" id="d-title"></div><button class="icon-btn" onclick="closeModal('detail-modal')"><i class="ti ti-x"></i></button></div>
+    <div id="d-body"></div>
+    <div class="modal-ft"><button class="btn-cancel" onclick="closeModal('detail-modal')">關閉</button></div>
+  </div>
+</div>
+
+<!-- 許願 Modal -->
+<div class="modal-bg" id="wish-modal">
+  <div class="modal">
+    <div class="modal-hd"><div class="modal-title">新增許願</div><button class="icon-btn" onclick="closeModal('wish-modal')"><i class="ti ti-x"></i></button></div>
+    <div class="fg"><label class="flabel">想吃什麼</label><input class="finput" id="w-name" placeholder="例：宮保雞丁" /></div>
+    <div class="fg"><label class="flabel">食材（選填）</label><div id="w-ings"></div><button class="btn-sm" onclick="addWishIngRow()" style="margin-top:4px"><i class="ti ti-plus"></i> 加食材</button></div>
+    <div class="fg"><label class="flabel">做法備注（選填）</label><textarea class="ftextarea" id="w-note" placeholder="簡單描述烹飪方式即可"></textarea></div>
+    <div class="modal-ft"><button class="btn-cancel" onclick="closeModal('wish-modal')">取消</button><button class="btn-primary" onclick="saveWish()">送出許願</button></div>
+  </div>
+</div>
+
+<!-- 暱稱編輯 Modal -->
+<div class="modal-bg" id="name-modal">
+  <div class="modal" style="width:360px">
+    <div class="modal-hd"><div class="modal-title">更改暱稱</div><button class="icon-btn" onclick="closeModal('name-modal')"><i class="ti ti-x"></i></button></div>
+    <div class="fg"><label class="flabel">暱稱</label><input class="finput" id="edit-name" /></div>
+    <div class="fg"><label class="flabel">顏色</label><div class="color-picker" id="edit-color-picker"></div></div>
+    <div class="modal-ft"><button class="btn-cancel" onclick="closeModal('name-modal')">取消</button><button class="btn-primary" onclick="saveNameEdit()">儲存</button></div>
+  </div>
+</div>
+
+<script>
+const DAYS_ZH = ['週一','週二','週三','週四','週五','週六','週日'];
+const STORES = ['H-E-B','Kroger','H Mart (Haltom City)','99 Ranch (Carrollton)','Central Market','Sprouts','WinCo Foods','Tom Thumb','其他'];
+const TAG_MAP = {meat:'葷',veg:'素',stir:'快炒',braise:'滷',steam:'蒸',fry:'炸',raw:'涼拌'};
+const TAG_CLASS = {meat:'t-meat',veg:'t-veg',stir:'t-stir',braise:'t-braise',steam:'t-steam',fry:'t-fry',raw:'t-raw'};
+const COLORS = [
+  {bg:'#E6F1FB',fg:'#185FA5'},{bg:'#EAF3DE',fg:'#3B6D11'},
+  {bg:'#FAEEDA',fg:'#854F0B'},{bg:'#FAECE7',fg:'#993C1D'},
+  {bg:'#EEEDFE',fg:'#3C3489'},{bg:'#E1F5EE',fg:'#0F6E56'},
+  {bg:'#F1EFE8',fg:'#5F5E5A'},{bg:'#FBEAF0',fg:'#72243E'},
+];
+
+let weekOffset = 0;
+let schedule = {}, wishList = [], groceryData = {}, groceryStores = {}, groceryManual = [], activityLog = [];
+let selectedTags = [], editingDk = null, selectedColorIdx = 0;
+let currentUser = {name:'',colorIdx:0};
+let sbConfig = null;
+
+// ── Date helpers ──
+function getMonday(offset=0){const d=new Date();d.setHours(0,0,0,0);const day=d.getDay();d.setDate(d.getDate()-day+(day===0?-6:1)+offset*7);return d;}
+function getWeekDates(offset=0){const mon=getMonday(offset);return Array.from({length:7},(_,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);return d;});}
+function fmtDate(d){return `${d.getMonth()+1}/${d.getDate()}`;}
+function fmtTs(ts){const d=new Date(ts);return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;}
+function weekKey(offset=0){const d=getMonday(offset);const jan=new Date(d.getFullYear(),0,1);return `${d.getFullYear()}-W${String(Math.ceil((((d-jan)/86400000)+jan.getDay()+1)/7)).padStart(2,'0')}`;}
+function dayKey(i){return weekKey(weekOffset)+'-d'+i;}
+
+// ── Avatar ──
+function avatarHtml(user,size=22){const c=COLORS[user.colorIdx||0];const init=(user.name||'?').slice(0,1).toUpperCase();return `<div class="avatar" style="width:${size}px;height:${size}px;background:${c.bg};color:${c.fg};font-size:${Math.round(size*.5)}px">${init}</div>`;}
+
+function buildColorPicker(id,selIdx){
+  document.getElementById(id).innerHTML=COLORS.map((c,i)=>`<div class="color-opt${i===selIdx?' sel':''}" style="background:${c.bg};border-color:${i===selIdx?c.fg:'transparent'}" onclick="selectColor(${i},'${id}')"></div>`).join('');
+}
+function selectColor(i,id){
+  selectedColorIdx=i;
+  document.querySelectorAll(`#${id} .color-opt`).forEach((el,idx)=>{el.classList.toggle('sel',idx===i);el.style.borderColor=idx===i?COLORS[i].fg:'transparent';});
+}
+
+// ── Week render ──
+function updateWeekDisplay(){
+  const dates=getWeekDates(weekOffset);
+  document.getElementById('week-range-display').textContent=`${fmtDate(dates[0])} – ${fmtDate(dates[6])}`;
+  document.getElementById('week-label').textContent=weekOffset===0?'這週':(weekOffset===-1?'上週':(weekOffset===1?'下週':`偏移 ${weekOffset} 週`));
+}
+function renderWeek(){
+  updateWeekDisplay();
+  const grid=document.getElementById('week-grid');grid.innerHTML='';
+  getWeekDates(weekOffset).forEach((date,i)=>{
+    const isWE=i>=5,dk=dayKey(i),dishes=schedule[dk]||[];
+    const col=document.createElement('div');col.className='day-col'+(isWE?' weekend':'');
+    col.innerHTML=`<div class="day-header"><div class="day-name">${DAYS_ZH[i]}</div><div class="day-date">${fmtDate(date)}</div></div>
+    <div class="dishes-area">
+      ${dishes.map((dish,di)=>{
+        const by=dish.createdBy||{name:'?',colorIdx:0};
+        return `<div class="dish-card" onclick="showDetail('${dk}',${di})">
+          <button class="del-btn" onclick="event.stopPropagation();removeDish('${dk}',${di})"><i class="ti ti-x"></i></button>
+          <div class="dish-card-name">${dish.name}</div>
+          ${dish.tags.length?`<div class="dish-card-tags">${dish.tags.map(t=>`<span class="tag ${TAG_CLASS[t]||''}">${TAG_MAP[t]||t}</span>`).join('')}</div>`:''}
+          <div class="dish-card-by">${avatarHtml(by,13)} ${by.name}</div>
+        </div>`;
+      }).join('')}
+      <button class="add-dish-btn" onclick="openAddModal('${dk}')"><i class="ti ti-plus"></i> 新增菜色</button>
+    </div>`;
+    grid.appendChild(col);
+  });
+}
+function shiftWeek(d){weekOffset+=d;renderWeek();}
+
+// ── Add dish ──
+function openAddModal(dk,prefill=null){
+  if(!currentUser.name){showNameOverlay();return;}
+  editingDk=dk;selectedTags=[];
+  document.getElementById('f-name').value=prefill?prefill.name:'';
+  document.getElementById('f-note').value=prefill?prefill.note||'':'';
+  document.getElementById('f-ings').innerHTML=ingRowHtml();
+  document.getElementById('f-steps').innerHTML=stepRowHtml(1);
+  document.querySelectorAll('.topt').forEach(b=>b.className='topt');
+  if(prefill){
+    selectedTags=[...(prefill.tags||[])];
+    (prefill.tags||[]).forEach(t=>{const b=document.querySelector(`.topt[data-tag="${t}"]`);if(b)b.className=`topt sel-${t}`;});
+    const ia=document.getElementById('f-ings');ia.innerHTML='';
+    (prefill.ings||[]).forEach(n=>ia.insertAdjacentHTML('beforeend',ingRowHtml(n)));
+    if(!(prefill.ings||[]).length)ia.innerHTML=ingRowHtml();
+    if(prefill.note)document.getElementById('f-note').value=prefill.note;
+  }
+  document.getElementById('add-modal-title').textContent='新增菜色 → '+DAYS_ZH[parseInt(dk.split('-d')[1])];
+  document.getElementById('add-modal').classList.add('open');
+}
+function ingRowHtml(val=''){return `<div class="row"><input class="finput" placeholder="食材名稱" value="${val}"/><input class="finput sm" placeholder="份量"/><button class="icon-btn" onclick="this.closest('.row').remove()"><i class="ti ti-trash"></i></button></div>`;}
+function stepRowHtml(n){return `<div class="row" style="align-items:flex-start"><div class="step-num" style="margin-top:8px">${n}</div><textarea class="ftextarea" style="min-height:52px" placeholder="步驟說明..."></textarea><button class="icon-btn" onclick="rmStep(this)" style="margin-top:8px;flex-shrink:0"><i class="ti ti-trash"></i></button></div>`;}
+function addIngRow(id){document.getElementById(id).insertAdjacentHTML('beforeend',ingRowHtml());}
+function addStepRow(id){const el=document.getElementById(id);el.insertAdjacentHTML('beforeend',stepRowHtml(el.querySelectorAll('.row').length+1));}
+function rmStep(btn){btn.closest('.row').remove();document.querySelectorAll('#f-steps .step-num').forEach((el,i)=>el.textContent=i+1);}
+function addWishIngRow(){document.getElementById('w-ings').insertAdjacentHTML('beforeend',`<div class="row"><input class="finput" placeholder="食材"/><button class="icon-btn" onclick="this.closest('.row').remove()"><i class="ti ti-trash"></i></button></div>`);}
+function toggleTag(btn){const t=btn.dataset.tag;if(selectedTags.includes(t)){selectedTags=selectedTags.filter(x=>x!==t);btn.className='topt';}else{selectedTags.push(t);btn.className=`topt sel-${t}`;}}
+
+function logAction(type,desc){activityLog.unshift({type,desc,user:{...currentUser},ts:Date.now()});if(activityLog.length>100)activityLog.pop();}
+
+function saveDish(){
+  const name=document.getElementById('f-name').value.trim();if(!name){alert('請填入菜名');return;}
+  const ings=[];document.querySelectorAll('#f-ings .row').forEach(r=>{const ins=r.querySelectorAll('input');if(ins[0].value.trim())ings.push({n:ins[0].value.trim(),q:ins[1].value.trim()});});
+  const steps=[];document.querySelectorAll('#f-steps .ftextarea').forEach(ta=>{if(ta.value.trim())steps.push(ta.value.trim());});
+  const dish={name,tags:[...selectedTags],ings,steps,note:document.getElementById('f-note').value.trim(),createdBy:{...currentUser},createdAt:Date.now(),editHistory:[]};
+  if(!schedule[editingDk])schedule[editingDk]=[];
+  schedule[editingDk].push(dish);
+  logAction('add',`新增了「${name}」到 ${DAYS_ZH[parseInt(editingDk.split('-d')[1])]}`);
+  saveData();closeModal('add-modal');renderWeek();
+}
+function removeDish(dk,di){
+  const dish=schedule[dk][di];logAction('del',`移除了「${dish.name}」`);
+  schedule[dk].splice(di,1);saveData();renderWeek();
+}
+function showDetail(dk,di){
+  const dish=(schedule[dk]||[])[di];if(!dish)return;
+  document.getElementById('d-title').textContent=dish.name;
+  const tHtml=dish.tags.map(t=>`<span class="tag ${TAG_CLASS[t]||''}">${TAG_MAP[t]||t}</span>`).join('');
+  const ingHtml=dish.ings&&dish.ings.length?`<div class="detail-section"><div class="detail-section-label">食材</div><div class="chips">${dish.ings.map(i=>`<span class="chip">${i.n}${i.q?' · '+i.q:''}</span>`).join('')}</div></div>`:'';
+  const stepHtml=dish.steps&&dish.steps.length?`<div class="detail-section"><div class="detail-section-label">烹飪步驟</div>${dish.steps.map((s,i)=>`<div class="step-item"><div class="step-badge">${i+1}</div><div class="step-text">${s}</div></div>`).join('')}</div>`:'';
+  const noteHtml=dish.note?`<div class="note-box" style="margin-bottom:1rem"><i class="ti ti-bulb"></i> ${dish.note}</div>`:'';
+  const creator=dish.createdBy||{name:'?',colorIdx:0};
+  document.getElementById('d-body').innerHTML=`
+    ${tHtml?`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:1rem">${tHtml}</div>`:''}
+    ${ingHtml}${stepHtml}${noteHtml}
+    <div class="history-list">
+      <div style="font-size:11px;font-weight:500;color:var(--color-text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">編輯紀錄</div>
+      <div class="history-item">${avatarHtml(creator,16)}<span style="font-size:12px;margin-left:4px">${creator.name} 新增</span><span class="history-time">${fmtTs(dish.createdAt||Date.now())}</span></div>
+      ${(dish.editHistory||[]).map(h=>`<div class="history-item">${avatarHtml(h.user,16)}<span style="font-size:12px;margin-left:4px">${h.user.name} 編輯</span><span class="history-time">${fmtTs(h.ts)}</span></div>`).join('')}
+    </div>`;
+  document.getElementById('detail-modal').classList.add('open');
+}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+
+// ── Grocery ──
+function generateGrocery(){
+  const wk=weekKey(weekOffset),agg={};
+  for(let i=0;i<7;i++){(schedule[wk+'-d'+i]||[]).forEach(dish=>{(dish.ings||[]).forEach(ing=>{if(!ing.n)return;if(!agg[ing.n])agg[ing.n]={qty:ing.q||'',store:groceryStores[ing.n]||'H-E-B'};else if(ing.q)agg[ing.n].qty=agg[ing.n].qty?(agg[ing.n].qty+' + '+ing.q):ing.q;});});}
+  groceryData=agg;renderGrocery();saveData();
+}
+function renderGrocery(){
+  const grps={'生鮮蔬果':[],'肉類海鮮':[],'豆製品蛋':[],'調味料醬料':[],'其他':[]};
+  const clf=n=>{if(/肉|雞|豬|牛|排骨|魚|蝦|蟹/.test(n))return'肉類海鮮';if(/豆腐|豆皮|蛋|豆/.test(n))return'豆製品蛋';if(/醬|鹽|糖|醋|油|粉|酒|味/.test(n))return'調味料醬料';if(/菜|椒|番茄|蔥|蒜|薑|洋蔥|辣椒|菇|瓜|薯/.test(n))return'生鮮蔬果';return'其他';};
+  const all=[...Object.entries(groceryData).map(([n,i])=>({name:n,qty:i.qty,store:groceryStores[n]||i.store||'H-E-B'})),...groceryManual];
+  if(!all.length){document.getElementById('grocery-body').innerHTML='<div style="color:var(--color-text-3);font-size:14px;padding:1rem 0">本週菜單尚無菜色，請先新增菜色</div>';return;}
+  all.forEach(it=>grps[clf(it.name)].push(it));
+  const icons={'生鮮蔬果':'ti-leaf','肉類海鮮':'ti-fish','豆製品蛋':'ti-egg','調味料醬料':'ti-bottle','其他':'ti-shopping-bag'};
+  document.getElementById('grocery-body').innerHTML=Object.entries(grps).filter(([,items])=>items.length).map(([g,items])=>`
+    <div class="grp"><div class="grp-title"><i class="ti ${icons[g]}"></i>${g}</div><div class="grp-items">
+    ${items.map(it=>{const s=groceryStores[it.name]||it.store||'H-E-B';return `<div class="gitem"><input type="checkbox" class="gchk" onchange="this.closest('.gitem').classList.toggle('checked',this.checked)"/><span class="gname">${it.name}</span><span class="gqty">${it.qty||'適量'}</span>
+    <div class="store-pill"><button class="store-btn" onclick="toggleStoreDrop(this)">${s} <i class="ti ti-chevron-down" style="font-size:10px"></i></button>
+    <div class="store-drop">${STORES.map(st=>`<button class="sopt${st===s?' sel':''}" onclick="setStore(this,'${it.name}','${st}')">${st}</button>`).join('')}</div></div></div>`;}).join('')}
+    </div></div>`).join('');
+}
+function toggleStoreDrop(btn){const d=btn.nextElementSibling,was=d.classList.contains('open');document.querySelectorAll('.store-drop.open').forEach(x=>x.classList.remove('open'));if(!was)d.classList.add('open');}
+function setStore(btn,name,store){groceryStores[name]=store;if(groceryData[name])groceryData[name].store=store;saveData();renderGrocery();}
+function addCustomItem(){const n=prompt('食材名稱？');if(!n)return;const q=prompt('份量（可留空）')||'';groceryManual.push({name:n,qty:q,store:'H-E-B'});saveData();renderGrocery();}
+
+// ── Wish ──
+function renderWishList(){
+  const body=document.getElementById('wish-body');
+  if(!wishList.length){body.innerHTML='<div style="color:var(--color-text-3);font-size:14px;padding:1rem 0">還沒有許願，成為第一個！</div>';return;}
+  body.innerHTML=[...wishList].sort((a,b)=>b.votes-a.votes).map((w)=>{
+    const origIdx=wishList.indexOf(w);
+    const myVoted=(w.voters||[]).some(v=>v.name===currentUser.name&&currentUser.name);
+    const by=w.proposedBy||{name:'?',colorIdx:0};
+    return `<div class="wish-item">
+      <div class="wish-hd">
+        <div><div class="wish-name">${w.name}</div><div class="wish-meta">${avatarHtml(by,14)} ${by.name} 提議</div></div>
+        <div class="wish-actions">
+          <button class="vote-btn${myVoted?' voted':''}" onclick="vote(${origIdx})">${myVoted?'<i class="ti ti-heart-filled" style="font-size:13px"></i>':'<i class="ti ti-heart" style="font-size:13px"></i>'} ${w.votes}</button>
+          <button class="use-btn" onclick="scheduleFromWish(${origIdx})"><i class="ti ti-calendar-plus"></i> 排入菜單</button>
+        </div>
+      </div>
+      ${(w.voters||[]).length?`<div class="vote-avatars">${(w.voters||[]).map(v=>avatarHtml(v,18)).join('')}<span style="font-size:11px;color:var(--color-text-3);margin-left:4px">${(w.voters||[]).map(v=>v.name).join('、')}</span></div>`:''}
+      ${w.ings&&w.ings.length?`<div class="wish-ings"><div class="wish-ing-label">食材</div><div class="wish-ing-pills">${w.ings.map(n=>`<span class="wip">${n}</span>`).join('')}</div></div>`:''}
+      ${w.note?`<div class="note-box" style="margin-top:8px;font-size:12px">${w.note}</div>`:''}
+    </div>`;
+  }).join('');
+}
+function vote(i){
+  if(!currentUser.name){showNameOverlay();return;}
+  if(!wishList[i].voters)wishList[i].voters=[];
+  const idx=wishList[i].voters.findIndex(v=>v.name===currentUser.name);
+  if(idx>-1){wishList[i].voters.splice(idx,1);wishList[i].votes--;logAction('vote',`取消了對「${wishList[i].name}」的投票`);}
+  else{wishList[i].voters.push({...currentUser});wishList[i].votes++;logAction('vote',`投票給「${wishList[i].name}」`);}
+  saveData();renderWishList();
+}
+function scheduleFromWish(i){const w=wishList[i];switchTabByName('plan');setTimeout(()=>openAddModal(dayKey(0),{name:w.name,tags:[],ings:w.ings||[],note:w.note||''}),100);}
+function openWishModal(){
+  if(!currentUser.name){showNameOverlay();return;}
+  document.getElementById('w-name').value='';document.getElementById('w-note').value='';
+  document.getElementById('w-ings').innerHTML=`<div class="row"><input class="finput" placeholder="食材"/><button class="icon-btn" onclick="this.closest('.row').remove()"><i class="ti ti-trash"></i></button></div>`;
+  document.getElementById('wish-modal').classList.add('open');
+}
+function saveWish(){
+  const name=document.getElementById('w-name').value.trim();if(!name){alert('請填入菜名');return;}
+  const ings=[];document.querySelectorAll('#w-ings input').forEach(inp=>{if(inp.value.trim())ings.push(inp.value.trim());});
+  wishList.push({name,proposedBy:{...currentUser},votes:1,voters:[{...currentUser}],ings,note:document.getElementById('w-note').value.trim(),ts:Date.now()});
+  logAction('wish',`許願「${name}」`);saveData();closeModal('wish-modal');renderWishList();
+}
+
+// ── Log ──
+function renderLog(){
+  const body=document.getElementById('log-body');
+  if(!activityLog.length){body.innerHTML='<div style="color:var(--color-text-3);font-size:14px;padding:1rem 0">尚無動態紀錄</div>';return;}
+  const tClass={add:'la-add',edit:'la-edit',del:'la-del',vote:'la-vote',wish:'la-wish'};
+  const tLabel={add:'新增',edit:'編輯',del:'移除',vote:'投票',wish:'許願'};
+  body.innerHTML=`<div style="background:var(--color-bg);border:0.5px solid var(--color-border);border-radius:var(--radius-lg);padding:0 14px">${activityLog.map(l=>`
+    <div class="log-item"><div class="log-av">${avatarHtml(l.user,28)}</div><div class="log-content">
+    <div class="log-main"><span class="log-action ${tClass[l.type]||'la-edit'}">${tLabel[l.type]||l.type}</span>${l.user.name} ${l.desc}</div>
+    <div class="log-time">${fmtTs(l.ts)}</div></div></div>`).join('')}</div>`;
+}
+
+// ── Tab ──
+function switchTab(name,btn){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  if(btn)btn.classList.add('active');
+  if(name==='grocery')generateGrocery();
+  if(name==='log')renderLog();
+  if(name==='settings')document.getElementById('share-url').value=window.location.href;
+}
+function switchTabByName(name){switchTab(name,document.querySelector(`.nav-btn[onclick*="'${name}'"]`));}
+
+// ── Identity ──
+function showNameOverlay(){
+  selectedColorIdx=currentUser.colorIdx||0;
+  buildColorPicker('color-picker',selectedColorIdx);
+  document.getElementById('setup-name').value=currentUser.name||'';
+  document.getElementById('name-overlay').classList.add('open');
+}
+function confirmIdentity(){
+  const name=document.getElementById('setup-name').value.trim();if(!name){alert('請填入暱稱');return;}
+  currentUser={name,colorIdx:selectedColorIdx};
+  document.getElementById('name-overlay').classList.remove('open');
+  updateUserPill();saveUserLocal();
+}
+function openNameEdit(){
+  selectedColorIdx=currentUser.colorIdx||0;
+  document.getElementById('edit-name').value=currentUser.name;
+  buildColorPicker('edit-color-picker',selectedColorIdx);
+  document.getElementById('name-modal').classList.add('open');
+}
+function saveNameEdit(){
+  const name=document.getElementById('edit-name').value.trim();if(!name){alert('請填入暱稱');return;}
+  currentUser={name,colorIdx:selectedColorIdx};closeModal('name-modal');updateUserPill();saveUserLocal();
+}
+function updateUserPill(){
+  const c=COLORS[currentUser.colorIdx||0];
+  const av=document.getElementById('topbar-avatar');
+  av.style.background=c.bg;av.style.color=c.fg;av.textContent=(currentUser.name||'?').slice(0,1).toUpperCase();
+  document.getElementById('topbar-name').textContent=currentUser.name||'設定暱稱';
+}
+function saveUserLocal(){try{localStorage.setItem('bentoUser',JSON.stringify(currentUser));}catch(e){}}
+function loadUserLocal(){try{const u=localStorage.getItem('bentoUser');if(u){currentUser=JSON.parse(u);updateUserPill();}}catch(e){}}
+
+// ── Storage: Supabase ──
+async function supabaseSave(data){
+  if(!sbConfig)return;
+  await fetch(`${sbConfig.url}/rest/v1/bento_data`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','apikey':sbConfig.key,'Authorization':'Bearer '+sbConfig.key,'Prefer':'resolution=merge-duplicates'},
+    body:JSON.stringify({key:'main',value:data,updated_at:new Date().toISOString()})
+  });
+}
+async function supabaseLoad(){
+  if(!sbConfig)return null;
+  try{
+    const r=await fetch(`${sbConfig.url}/rest/v1/bento_data?key=eq.main&select=value`,{headers:{'apikey':sbConfig.key,'Authorization':'Bearer '+sbConfig.key}});
+    const arr=await r.json();return arr&&arr[0]?arr[0].value:null;
+  }catch(e){return null;}
+}
+async function saveData(){
+  setSyncStatus('saving');
+  const payload={schedule,wishList,groceryData,groceryStores,groceryManual,activityLog};
+  try{
+    localStorage.setItem('bentoData',JSON.stringify(payload));
+    if(sbConfig)await supabaseSave(payload);
+    setSyncStatus('ok');
+  }catch(e){setSyncStatus('ok');}
+}
+function applyData(d){
+  if(d.schedule)schedule=d.schedule;if(d.wishList)wishList=d.wishList;
+  if(d.groceryData)groceryData=d.groceryData;if(d.groceryStores)groceryStores=d.groceryStores;
+  if(d.groceryManual)groceryManual=d.groceryManual;if(d.activityLog)activityLog=d.activityLog;
+}
+function setSyncStatus(s){
+  const badge=document.getElementById('sync-badge'),text=document.getElementById('sync-text');
+  badge.className='sync-badge';
+  if(s==='saving'){badge.classList.add('sync-saving');badge.querySelector('i').className='ti ti-loader';text.textContent='儲存中...';}
+  else{badge.classList.add('sync-ok');badge.querySelector('i').className='ti ti-cloud-check';text.textContent=sbConfig?'已雲端同步':'已本機儲存';}
+}
+async function saveSupabaseConfig(){
+  const url=document.getElementById('sb-url').value.trim().replace(/\/$/,'');
+  const key=document.getElementById('sb-key').value.trim();
+  if(!url||!key){alert('請填入 URL 和 Key');return;}
+  sbConfig={url,key};
+  localStorage.setItem('sbConfig',JSON.stringify(sbConfig));
+  updateConnStatus('testing');
+  const remote=await supabaseLoad();
+  if(remote!==null){
+    updateConnStatus('ok');
+    if(remote){applyData(remote);renderWeek();renderWishList();}
+    await saveData();
+  }else{updateConnStatus('err');}
+}
+async function clearSupabaseConfig(){
+  sbConfig=null;localStorage.removeItem('sbConfig');
+  document.getElementById('sb-url').value='';document.getElementById('sb-key').value='';
+  updateConnStatus('none');setSyncStatus('ok');
+}
+function updateConnStatus(s){
+  const bar=document.getElementById('conn-status-bar');bar.className='conn-status';
+  if(s==='ok'){bar.classList.add('conn-ok');bar.innerHTML='<i class="ti ti-cloud-check"></i> Supabase 已連線，資料即時同步中';}
+  else if(s==='testing'){bar.classList.add('conn-warn');bar.innerHTML='<i class="ti ti-loader"></i> 連線測試中...';}
+  else if(s==='err'){bar.classList.add('conn-err');bar.innerHTML='<i class="ti ti-alert-circle"></i> 連線失敗，請確認 URL 和 Key';}
+  else{bar.classList.add('conn-warn');bar.innerHTML='<i class="ti ti-cloud-off"></i> 尚未設定 Supabase，資料只存在本機';}
+}
+function copyShareUrl(){navigator.clipboard.writeText(window.location.href).then(()=>alert('已複製網址！'));}
+
+// ── Init ──
+async function init(){
+  loadUserLocal();
+  try{const d=localStorage.getItem('bentoData');if(d)applyData(JSON.parse(d));}catch(e){}
+  try{const s=localStorage.getItem('sbConfig');if(s){sbConfig=JSON.parse(s);document.getElementById('sb-url').value=sbConfig.url;document.getElementById('sb-key').value=sbConfig.key;updateConnStatus('ok');const remote=await supabaseLoad();if(remote){applyData(remote);}}}catch(e){}
+  renderWeek();renderWishList();
+  if(!currentUser.name)showNameOverlay();
+}
+document.addEventListener('click',e=>{if(!e.target.closest('.store-pill'))document.querySelectorAll('.store-drop.open').forEach(d=>d.classList.remove('open'));});
+init();
+</script>
+</body>
+</html>
